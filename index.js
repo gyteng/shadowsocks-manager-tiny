@@ -1,0 +1,2 @@
+require('./shadowsocks');
+require('./server');
