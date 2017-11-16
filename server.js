@@ -15,7 +15,7 @@ const receiveCommand = (data, code) => {
   //   time,
   // });
   const message = JSON.parse(data.slice(6).toString());
-  console.log(message);
+  // console.log(message);
   if(message.command === 'add') {
     const port = +message.port;
     const password = message.password;

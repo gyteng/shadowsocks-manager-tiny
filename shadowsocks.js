@@ -10,11 +10,14 @@ const ssConfig = process.argv[2] || '127.0.0.1:6001';
 const host = ssConfig.split(':')[0];
 const port = +ssConfig.split(':')[1];
 
-let shadowsocksType = 'libev';
+let shadowsocksType = '';
 let lastFlow;
 
 const sendPing = () => {
   client.send(Buffer.from('ping'), port, host);
+  if(shadowsocksType === 'libev') {
+    client.send(Buffer.from('list'), port, host);
+  }
 };
 
 let existPort = [];
@@ -55,14 +58,17 @@ const compareWithLastFlow = (flow, lastFlow) => {
 };
 
 let firstFlow = true;
+let portsForLibev = [];
 const connect = () => {
   client.on('message', (msg, rinfo) => {
     const msgStr = new String(msg);
+    // console.log(msgStr);
     if(msgStr.substr(0, 4) === 'pong') {
       shadowsocksType = 'python';
+    } else if(msgStr.substr(0, 3) === '[\n\t') {
+      portsForLibev = JSON.parse(msgStr);
     } else if(msgStr.substr(0, 5) === 'stat:') {
       let flow = JSON.parse(msgStr.substr(5));
-      // console.log(flow);
       setExistPort(flow);
       const realFlow = compareWithLastFlow(flow, lastFlow);
 
@@ -78,7 +84,6 @@ const connect = () => {
         }
       }
 
-      // logger.info(`Receive flow from shadowsocks: (${ shadowsocksType })\n${JSON.stringify(realFlow, null, 2)}`);
       lastFlow = flow;
       const insertFlow = Object.keys(realFlow).map(m => {
         return {
@@ -90,14 +95,30 @@ const connect = () => {
         return f.flow > 0;
       });
       db.listAccount().then(accounts => {
-        insertFlow.forEach(fe => {
-          const account = accounts.filter(f => {
-            return fe.port === f.port;
-          })[0];
-          if(!account) {
-            sendMessage(`remove: {"server_port": ${ fe.port }}`);
-          }
-        });
+        if(shadowsocksType === 'python') {
+          // python
+          insertFlow.forEach(fe => {
+            const account = accounts.filter(f => {
+              return fe.port === f.port;
+            })[0];
+            if(!account) {
+              sendMessage(`remove: {"server_port": ${ fe.port }}`);
+            }
+          });
+        } else if(shadowsocksType === '') {
+          shadowsocksType === 'libev';
+        } else if(shadowsocksType === 'libev') {
+          // libev
+          portsForLibev.forEach(f => {
+            const account = accounts.filter(a => a.port === +f.server_port)[0];
+            if(!account) {
+              sendMessage(`remove: {"server_port": ${ f.server_port }}`);
+            } else if (account.password !== f.password) {
+              sendMessage(`remove: {"server_port": ${ f.server_port }}`);
+              sendMessage(`add: {"server_port": ${ account.port }, "password": "${ account.password }"}`);
+            }
+          });
+        }
         if(insertFlow.length > 0) {
           if(firstFlow) {
             firstFlow = false;
@@ -137,23 +158,34 @@ const startUp = () => {
 };
 
 const resend = () => {
-  if(Date.now() - existPortUpdatedAt >= 180 * 1000) {
-    existPort = [];
-  }
-  db.listAccount().then(accounts => {
-    accounts.forEach(f => {
-      if(existPort.indexOf(f.port) < 0) {
-        sendMessage(`add: {"server_port": ${ f.port }, "password": "${ f.password }"}`);
-      }
+  if(shadowsocksType === 'python') {
+    if(Date.now() - existPortUpdatedAt >= 180 * 1000) {
+      existPort = [];
+    }
+    db.listAccount().then(accounts => {
+      accounts.forEach(f => {
+        if(existPort.indexOf(f.port) < 0) {
+          sendMessage(`add: {"server_port": ${ f.port }, "password": "${ f.password }"}`);
+        }
+      });
     });
-  });
+  } else if (shadowsocksType === 'libev') {
+    db.listAccount().then(accounts => {
+      accounts.forEach(account => {
+        const exists = portsForLibev.filter(p => +p.server_port === account.port)[0];
+        if(!exists) {
+          sendMessage(`add: {"server_port": ${ account.port }, "password": "${ account.password }"}`);
+        }
+      });
+    });
+  }
 };
 
 connect();
 startUp();
 setInterval(() => {
   sendPing();
-  sendPing();
+  resend();
 }, 60 * 1000);
 
 const addAccount = (port, password) => {
