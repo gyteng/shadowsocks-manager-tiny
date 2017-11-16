@@ -8,3 +8,4 @@ process.on('uncaughtException', err => {
 
 require('./shadowsocks');
 require('./server');
+require('./run');
