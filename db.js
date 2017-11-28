@@ -3,6 +3,7 @@ const fs = require('fs');
 let data = {
   account: {},
   flow: [],
+  command: {},
 };
 
 const readLocalFile = () => {
@@ -83,9 +84,24 @@ const getFlow = options => {
   }));
 };
 
+const addCommand = (data, code) => {
+  const time = Number.parseInt(data.slice(0, 6).toString('hex'), 16);
+  if(data.command[code]) {
+    return false;
+  }
+  data.command[code] = time;
+  for(const c in data.command) {
+    if(data.command[c] <= Date.now() - 10 * 60 * 1000) {
+      delete data.command[c];
+    }
+  }
+  return true;
+};
+
 exports.addAccount = addAccount;
 exports.removeAccount = removeAccount;
 exports.updateAccount = updateAccount;
 exports.listAccount = listAccount;
 exports.insertFlow = insertFlow;
 exports.getFlow = getFlow;
+exports.addCommand = addCommand;

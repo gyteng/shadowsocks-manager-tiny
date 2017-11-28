@@ -1,7 +1,7 @@
 const net = require('net');
 const crypto = require('crypto');
 const shadowsocks = require('./shadowsocks');
-
+const db = require('./db');
 const managerConfig = process.argv[3] || '0.0.0.0:6002';
 const host = managerConfig.split(':')[0];
 const port = +managerConfig.split(':')[1];
@@ -9,11 +9,9 @@ const password = process.argv[4] || '123456';
 
 const receiveCommand = (data, code) => {
   const time = Number.parseInt(data.slice(0, 6).toString('hex'), 16);
-  // await knex('command').whereBetween('time', [0, Date.now() - 10 * 60 * 1000]).del();
-  // await knex('command').insert({
-  //   code: code.toString('hex'),
-  //   time,
-  // });
+  if(!db.addCommand(data, code)) {
+    return return Promise.reject();
+  }
   const message = JSON.parse(data.slice(6).toString());
   // console.log(message);
   if(message.command === 'add') {
