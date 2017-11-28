@@ -3,7 +3,7 @@ process.on('unhandledRejection', (reason, p) => {
 });
 
 process.on('uncaughtException', err => {
-  console.error(`Caught exception: ${err}`);
+  console.error(err);
 });
 
 require('./shadowsocks');

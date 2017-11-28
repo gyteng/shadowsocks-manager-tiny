@@ -84,12 +84,12 @@ const getFlow = options => {
   }));
 };
 
-const addCommand = (data, code) => {
-  const time = Number.parseInt(data.slice(0, 6).toString('hex'), 16);
-  if(data.command[code]) {
+const addCommand = (commandData, code) => {
+  const time = Number.parseInt(commandData.slice(0, 6).toString('hex'), 16);
+  if(data.command[code.toString('hex')]) {
     return false;
   }
-  data.command[code] = time;
+  data.command[code.toString('hex')] = time;
   for(const c in data.command) {
     if(data.command[c] <= Date.now() - 10 * 60 * 1000) {
       delete data.command[c];
