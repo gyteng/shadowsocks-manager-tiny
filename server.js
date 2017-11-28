@@ -10,7 +10,7 @@ const password = process.argv[4] || '123456';
 const receiveCommand = (data, code) => {
   const time = Number.parseInt(data.slice(0, 6).toString('hex'), 16);
   if(!db.addCommand(data, code)) {
-    return return Promise.reject();
+    return Promise.reject();
   }
   const message = JSON.parse(data.slice(6).toString());
   // console.log(message);
