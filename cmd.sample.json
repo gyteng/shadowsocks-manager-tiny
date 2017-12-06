@@ -1,0 +1,3 @@
+[
+  "/your/kcprun/server/file/path/server_linux_amd64 -t 127.0.0.1:${port} -l :${port+10000} --key ${password}"
+]

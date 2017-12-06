@@ -3,6 +3,7 @@ const exec = require('child_process').exec;
 const client = dgram.createSocket('udp4');
 const version = require('./package.json').version;
 const db = require('./db');
+const rop = require('./runOtherProgram');
 
 let clientIp = [];
 
@@ -18,6 +19,23 @@ const sendPing = () => {
   if(shadowsocksType === 'libev') {
     client.send(Buffer.from('list'), port, host);
   }
+};
+
+// const sendMessage = (message) => {
+//   client.send(message, port, host);
+//   return Promise.resolve('ok');
+// };
+
+const sendAddMessage = (messagePort, messagePassword) => {
+  client.send(`add: {"server_port": ${ messagePort }, "password": "${ messagePassword }"}`, port, host);
+  rop.run(messagePort, messagePassword);
+  return Promise.resolve('ok');
+};
+
+const sendDelMessage = (messagePort) => {
+  client.send(`remove: {"server_port": ${ messagePort } }`, port, host);
+  rop.kill(messagePort);
+  return Promise.resolve('ok');
 };
 
 let existPort = [];
@@ -102,7 +120,7 @@ const connect = () => {
               return fe.port === f.port;
             })[0];
             if(!account) {
-              sendMessage(`remove: {"server_port": ${ fe.port }}`);
+              sendDelMessage(fe.port);
             }
           });
         } else if(shadowsocksType === '') {
@@ -112,10 +130,10 @@ const connect = () => {
           portsForLibev.forEach(f => {
             const account = accounts.filter(a => a.port === +f.server_port)[0];
             if(!account) {
-              sendMessage(`remove: {"server_port": ${ f.server_port }}`);
+              sendDelMessage(f.server_port);
             } else if (account.password !== f.password) {
-              sendMessage(`remove: {"server_port": ${ f.server_port }}`);
-              sendMessage(`add: {"server_port": ${ account.port }, "password": "${ account.password }"}`);
+              sendDelMessage(f.server_port);
+              sendAddMessage(account.port, account.password);
             }
           });
         }
@@ -143,16 +161,11 @@ const connect = () => {
   });
 };
 
-const sendMessage = (message) => {
-  client.send(message, port, host);
-  return Promise.resolve('ok');
-};
-
 const startUp = () => {
   client.send(Buffer.from('ping'), port, host);
   db.listAccount().then(accounts => {
     accounts.forEach(f => {
-      sendMessage(`add: {"server_port": ${ f.port }, "password": "${ f.password }"}`);
+      sendAddMessage(f.port, f.password);
     });
   });
 };
@@ -165,7 +178,7 @@ const resend = () => {
     db.listAccount().then(accounts => {
       accounts.forEach(f => {
         if(existPort.indexOf(f.port) < 0) {
-          sendMessage(`add: {"server_port": ${ f.port }, "password": "${ f.password }"}`);
+          sendAddMessage(f.port, f.password);
         }
       });
     });
@@ -174,7 +187,7 @@ const resend = () => {
       accounts.forEach(account => {
         const exists = portsForLibev.filter(p => +p.server_port === account.port)[0];
         if(!exists) {
-          sendMessage(`add: {"server_port": ${ account.port }, "password": "${ account.password }"}`);
+          sendAddMessage(account.port, account.password);
         }
       });
     });
@@ -190,7 +203,7 @@ setInterval(() => {
 
 const addAccount = (port, password) => {
   return db.addAccount(port, password).then(() => {
-    return sendMessage(`add: {"server_port": ${ port }, "password": "${ password }"}`);
+    return sendAddMessage(port, password);
   }).then(() => {
     return { port, password };
   });
@@ -198,7 +211,7 @@ const addAccount = (port, password) => {
 
 const removeAccount = port => {
   return db.removeAccount(port).then(() => {
-    return sendMessage(`remove: {"server_port": ${ port }}`);
+    return sendDelMessage(port);
   }).then(() => {
     return { port };
   });
@@ -206,9 +219,9 @@ const removeAccount = port => {
 
 const changePassword = (port, password) => {
   return db.updateAccount(port, password).then(() => {
-    return sendMessage(`remove: {"server_port": ${ port }}`);
+    return sendDelMessage(port);
   }).then(() => {
-    return sendMessage(`add: {"server_port": ${ port }, "password": "${ password }"}`);
+    return sendAddMessage(port, password);
   }).then(() => {
     return { port };
   });
