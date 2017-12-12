@@ -6,7 +6,6 @@ let commands = [];
 try {
   commands = require('./cmd.json');
 } catch (err) {
-
 }
 
 const run = (port, password) => {
@@ -28,10 +27,10 @@ const run = (port, password) => {
       })
       .split(' ');
     cmdParameters.splice(0, 1);
-    console.log(cmdName, cmdParameters);
+    // console.log(cmdName, cmdParameters);
     const cmd = spawn(cmdName, cmdParameters);
     cmd.stdout.on('data', (data) => {
-      console.log(data.toString());
+      // console.log(data.toString());
     });
     cmd.stderr.on('data', (data) => {
       console.log(data.toString());
