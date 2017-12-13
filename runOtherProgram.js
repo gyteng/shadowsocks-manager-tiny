@@ -27,13 +27,13 @@ const run = (port, password) => {
       })
       .split(' ');
     cmdParameters.splice(0, 1);
-    // console.log(cmdName, cmdParameters);
+    console.log(`运行外部进程: ${ cmdName } ${ cmdParameters.join(' ') }`);
     const cmd = spawn(cmdName, cmdParameters);
     cmd.stdout.on('data', (data) => {
       // console.log(data.toString());
     });
     cmd.stderr.on('data', (data) => {
-      console.log(data.toString());
+      // console.log(data.toString());
     });
     cmd.on('close', (code) => {});
     process[port].push(cmd);
@@ -46,6 +46,7 @@ const kill = (port) => {
   process[port].forEach(f => {
     f.stdin.pause();
     f.kill();
+    console.log(`杀死外部进程: ${ port }`);
   });
   delete process[port];
 };
