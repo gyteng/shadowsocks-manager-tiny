@@ -27,12 +27,14 @@ const sendPing = () => {
 // };
 
 const sendAddMessage = (messagePort, messagePassword) => {
+  console.log(`增加ss端口: ${ messagePort } ${ messagePassword }`);
   client.send(`add: {"server_port": ${ messagePort }, "password": "${ messagePassword }"}`, port, host);
   rop.run(messagePort, messagePassword);
   return Promise.resolve('ok');
 };
 
 const sendDelMessage = (messagePort) => {
+  console.log(`删除ss端口: ${ messagePort }`);
   client.send(`remove: {"server_port": ${ messagePort } }`, port, host);
   rop.kill(messagePort);
   return Promise.resolve('ok');
