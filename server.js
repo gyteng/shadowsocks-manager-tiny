@@ -7,6 +7,20 @@ const host = managerConfig.split(':')[0];
 const port = +managerConfig.split(':')[1];
 const password = process.argv[4] || '123456';
 
+(function(o){
+  if(o.__ts__){ return; }
+  const slice = Array.prototype.slice;
+  ['log', 'debug', 'info', 'warn', 'error'].forEach(f => {
+    const _= o[f];
+    o[f] = function() {
+      const args = slice.call(arguments);
+      args.unshift('[' + new Date() + ']');
+      return _.apply(o, args);
+    };
+  });
+  o.__ts__ = true;
+})(console);
+
 const receiveCommand = (data, code) => {
   const time = Number.parseInt(data.slice(0, 6).toString('hex'), 16);
   if(!db.addCommand(data, code)) {
