@@ -7,6 +7,24 @@ const host = managerConfig.split(':')[0];
 const port = +managerConfig.split(':')[1];
 const password = process.argv[4] || '123456';
 
+const dateString = () => {
+  const appendZero = (value, length) => {
+    if(value.toString().length < length) {
+      return new Array(length - value.toString().length + 1).join('0') + value.toString();
+    }
+    return value.toString();
+  };
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = appendZero(now.getMonth() + 1, 2);
+  const date = appendZero(now.getDate(), 2);
+  const hour = appendZero(now.getHours(), 2);
+  const minute = appendZero(now.getMinutes(), 2);
+  const second = appendZero(now.getSeconds(), 2);
+  const millisecond = appendZero(now.getMilliseconds(), 3);
+  return `${ year }-${ month }-${ date } ${ hour }:${ minute }:${ second }.${ millisecond }`;
+};
+
 (function(o){
   if(o.__ts__){ return; }
   const slice = Array.prototype.slice;
@@ -14,7 +32,7 @@ const password = process.argv[4] || '123456';
     const _= o[f];
     o[f] = function() {
       const args = slice.call(arguments);
-      args.unshift('[' + new Date() + ']');
+      args.unshift('[' + dateString() + ']');
       return _.apply(o, args);
     };
   });
