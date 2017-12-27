@@ -8,11 +8,35 @@ try {
 } catch (err) {
 }
 
+const getPorts = portString => {
+  const portArray = [];
+  portString.split(',').forEach(f => {
+    if (f.indexOf('-') < 0) {
+      portArray.push(+f);
+    } else {
+      const start = f.split('-')[0];
+      const end = f.split('-')[1];
+      for (let p = +start; p <= +end; p++) {
+        portArray.push(p);
+      }
+    }
+  });
+  return portArray;
+};
+
 const run = (port, password) => {
   if(commands.length === 0) { return; }
   if(process[port]) { return; }
   process[port] = [];
-  commands.forEach(command => {
+  commands.forEach(commandObj => {
+    let command = commandObj;
+    if(typeof commandObj === 'object') {
+      command = commandObj.cmd;
+      const ports = getPorts(commandObj.port);
+      if(ports.indexOf(port) < 0) {
+        return;
+      }
+    }
     const cmdName = command.split(' ')[0];
     let cmdParameters = command
       .replace(/\${port}/g, port.toString())
