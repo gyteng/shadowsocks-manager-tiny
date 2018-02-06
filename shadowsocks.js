@@ -11,7 +11,7 @@ const ssConfig = process.argv[2] || '127.0.0.1:6001';
 const host = ssConfig.split(':')[0];
 const port = +ssConfig.split(':')[1];
 
-let shadowsocksType = '';
+let shadowsocksType = 'libev';
 let lastFlow;
 
 const sendPing = () => {
@@ -27,7 +27,7 @@ const sendPing = () => {
 // };
 
 const sendAddMessage = (messagePort, messagePassword) => {
-  console.log(`增加ss端口: ${ messagePort } ${ messagePassword }`);
+  // console.log(`增加ss端口: ${ messagePort } ${ messagePassword }`);
   client.send(`add: {"server_port": ${ messagePort }, "password": "${ messagePassword }"}`, port, host);
   rop.run(messagePort, messagePassword);
   return Promise.resolve('ok');
@@ -240,7 +240,7 @@ const getFlow = (options) => {
 };
 
 const getVersion = () => {
-  return Promise.resolve({ version });
+  return Promise.resolve({ version: version + 'T' });
 };
 
 const getIp = port => {

@@ -82,12 +82,48 @@ const pack = (data) => {
 
 const checkCode = (data, password, code) => {
   const time = Number.parseInt(data.slice(0, 6).toString('hex'), 16);
+  // console.log(data.slice(0, 6).toString('hex'));
   if(Math.abs(Date.now() - time) > 10 * 60 * 1000) {
     return false;
   }
   const command = data.slice(6).toString();
   const md5 = crypto.createHash('md5').update(time + command + password).digest('hex');
   return md5.substr(0, 8) === code.toString('hex');
+};
+
+const printBuffer = buffer => {
+  const showBuffer = bufferArray => {
+    return bufferArray.map(m => {
+      const number = Number.parseInt(m, 16);
+      if(number >= 32 && number <= 126) {
+        return Buffer.from(m, 'hex').toString();
+      } else {
+        return ' ';
+      }
+    }).join('');
+  };
+  const hexString = buffer.toString('hex');
+  const hexStringArray = hexString.toString('hex')
+  .split('')
+  .map((ele, index, arr) => { return (index % 2) === 0 ? ele + arr[index + 1] : null })
+  .filter(f => f);
+  let log = '';
+  log += hexStringArray.join(' ') + '\n-----------------------------\n';
+  log += '00 01 02 03 04 05 06 07 08 09\n\n';
+  const hexStringLine = hexStringArray.map((ele, index, arr) => {
+    if(index % 10 === 0) {
+      return arr.slice(index, index + 10);
+    }
+  }).filter(f => f);
+  log += hexStringLine.map(ele => {
+    const appendSpace = new Array(10 - ele.length + 1).join('   ');
+    return ele.join(' ') + appendSpace  + '   ' + showBuffer(ele);
+  }).join('\n');
+  log += '\n-----------------------------\n';
+  log += 'length:  ' + Number.parseInt(buffer.slice(0, 2).toString('hex'), 16) + '\n';
+  log += 'version: ' + buffer.slice(2, 3).toString('hex');
+  log += '\n-----------------------------';
+  console.log(log);
 };
 
 const checkData = (receive) => {
@@ -100,6 +136,7 @@ const checkData = (receive) => {
   }
   length = buffer[0] * 256 + buffer[1];
   if (buffer.length >= length + 2) {
+    printBuffer(buffer);
     data = buffer.slice(2, length - 2);
     code = buffer.slice(length - 2);
     if(!checkCode(data, password, code)) {
