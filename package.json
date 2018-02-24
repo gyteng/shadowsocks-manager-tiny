@@ -1,6 +1,6 @@
 {
   "name": "shadowsocks-manager-tiny",
-  "version": "0.12.4",
+  "version": "0.12.8",
   "description": "",
   "main": "index.js",
   "author": "Gu Yuteng <igyteng@gmail.com>",

@@ -21,17 +21,29 @@ const sendPing = () => {
   }
 };
 
-// const sendMessage = (message) => {
-//   client.send(message, port, host);
-//   return Promise.resolve('ok');
-// };
+const addMessageCache = [];
 
 const sendAddMessage = (messagePort, messagePassword) => {
   // console.log(`增加ss端口: ${ messagePort } ${ messagePassword }`);
-  client.send(`add: {"server_port": ${ messagePort }, "password": "${ messagePassword }"}`, port, host);
-  rop.run(messagePort, messagePassword);
+  // client.send(`add: {"server_port": ${ messagePort }, "password": "${ messagePassword }"}`, port, host);
+  // rop.run(messagePort, messagePassword);
+  // return Promise.resolve('ok');
+  addMessageCache.push({ port: messagePort, password: messagePassword});
   return Promise.resolve('ok');
 };
+
+setInterval(() => {
+  // console.log('length: ' + addMessageCache.length);
+  for(let i = 0; i < 10; i++) {
+    if(!addMessageCache.length) { continue; }
+    const message = addMessageCache.shift();
+    const exists = portsForLibev.filter(p => +p.server_port === message.port)[0];
+    if(exists) { continue; }
+    console.log(`增加ss端口: ${ message.port } ${ message.password }`);
+    client.send(`add: {"server_port": ${ message.port }, "password": "${ message.password }"}`, port, host);
+    rop.run(message.port, message.password);
+  }
+}, 1000);
 
 const sendDelMessage = (messagePort) => {
   console.log(`删除ss端口: ${ messagePort }`);
@@ -204,8 +216,8 @@ setInterval(() => {
 }, 60 * 1000);
 
 const addAccount = (port, password) => {
-  return db.addAccount(port, password).then(() => {
-    return sendAddMessage(port, password);
+  return db.addAccount(port, password).then(success => {
+    sendAddMessage(port, password);
   }).then(() => {
     return { port, password };
   });
