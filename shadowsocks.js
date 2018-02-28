@@ -4,6 +4,7 @@ const client = dgram.createSocket('udp4');
 const version = require('./package.json').version;
 const db = require('./db');
 const rop = require('./runOtherProgram');
+const http = require('http');
 
 let clientIp = [];
 
@@ -21,17 +22,27 @@ const sendPing = () => {
   }
 };
 
-// const sendMessage = (message) => {
-//   client.send(message, port, host);
-//   return Promise.resolve('ok');
-// };
+const addMessageCache = [];
 
 const sendAddMessage = (messagePort, messagePassword) => {
   // console.log(`增加ss端口: ${ messagePort } ${ messagePassword }`);
-  client.send(`add: {"server_port": ${ messagePort }, "password": "${ messagePassword }"}`, port, host);
-  rop.run(messagePort, messagePassword);
+  // client.send(`add: {"server_port": ${ messagePort }, "password": "${ messagePassword }"}`, port, host);
+  // rop.run(messagePort, messagePassword);
+  // return Promise.resolve('ok');
+  addMessageCache.push({ port: messagePort, password: messagePassword});
   return Promise.resolve('ok');
 };
+
+setInterval(() => {
+  // console.log('length: ' + addMessageCache.length);
+  for(let i = 0; i < 10; i++) {
+    if(!addMessageCache.length) { return; }
+    const message = addMessageCache.shift();
+    console.log(`增加ss端口: ${ message.port } ${ message.password }`);
+    client.send(`add: {"server_port": ${ message.port }, "password": "${ message.password }"}`, port, host);
+    rop.run(message.port, message.password);
+  }
+}, 1000);
 
 const sendDelMessage = (messagePort) => {
   console.log(`删除ss端口: ${ messagePort }`);
@@ -239,8 +250,51 @@ const getFlow = (options) => {
   return db.getFlow(options);
 };
 
+const getGfwStatus = () => {
+  const sites = [
+    'baidu.com:80',
+    'qq.com:80',
+    'taobao.com:80',
+  ];
+  return new Promise((resolve, reject) => {
+    const site = sites[+Math.random().toString().substr(2) % sites.length];
+    const req = http.request({
+      hostname: site.split(':')[0],
+      port: +site.split(':')[1],
+      path: '/',
+      method: 'GET',
+      timeout: 2000,
+    }, res => {
+      // console.log(`STATUS: ${res.statusCode}`);
+      if(res.statusCode === 200) {
+        resolve({ isGfw: false });
+      }
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => {});
+      res.on('end', () => {});
+    });
+    req.on('timeout', () => {
+      req.abort();
+      resolve({ isGfw: true });
+    });
+    req.on('error', (e) => {
+      resolve({ isGfw: true });
+    });
+    req.end();
+  });
+};
+
 const getVersion = () => {
-  return Promise.resolve({ version: version + 'T' });
+  return getGfwStatus().then(success => {
+    return {
+      version: version + 'T',
+      isGfw: success.isGfw,
+    };
+  }).catch(err => {
+    return {
+      version: version + 'T',
+    };
+  });
 };
 
 const getIp = port => {
