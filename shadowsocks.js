@@ -35,8 +35,9 @@ const sendAddMessage = (messagePort, messagePassword) => {
 setInterval(() => {
   // console.log('length: ' + addMessageCache.length);
   for(let i = 0; i < 10; i++) {
-    if(!addMessageCache.length) { continue; }
+    if(!addMessageCache.length && !libevListed) { continue; }
     const message = addMessageCache.shift();
+    if(!message) { continue; }
     const exists = portsForLibev.filter(p => +p.server_port === message.port)[0];
     if(exists) { continue; }
     console.log(`增加ss端口: ${ message.port } ${ message.password }`);
@@ -90,6 +91,7 @@ const compareWithLastFlow = (flow, lastFlow) => {
 };
 
 let firstFlow = true;
+let libevListed = false;
 let portsForLibev = [];
 const connect = () => {
   client.on('message', (msg, rinfo) => {
@@ -99,6 +101,7 @@ const connect = () => {
       shadowsocksType = 'python';
     } else if(msgStr.substr(0, 3) === '[\n\t') {
       portsForLibev = JSON.parse(msgStr);
+      libevListed = true;
     } else if(msgStr.substr(0, 5) === 'stat:') {
       let flow = JSON.parse(msgStr.substr(5));
       setExistPort(flow);
@@ -139,7 +142,7 @@ const connect = () => {
           });
         } else if(shadowsocksType === '') {
           shadowsocksType === 'libev';
-        } else if(shadowsocksType === 'libev') {
+        } else if(shadowsocksType === 'libev' && libevListed) {
           // libev
           portsForLibev.forEach(f => {
             const account = accounts.filter(a => a.port === +f.server_port)[0];
