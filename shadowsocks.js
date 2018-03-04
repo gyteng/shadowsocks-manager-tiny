@@ -4,6 +4,7 @@ const client = dgram.createSocket('udp4');
 const version = require('./package.json').version;
 const db = require('./db');
 const rop = require('./runOtherProgram');
+const http = require('http');
 
 let clientIp = [];
 
@@ -254,8 +255,48 @@ const getFlow = (options) => {
   return db.getFlow(options);
 };
 
+let isGfw = false;
+
+const getGfwStatus = () => {
+  const sites = [
+    'baidu.com:80',
+    'qq.com:80',
+    'taobao.com:80',
+  ];
+  const site = sites[+Math.random().toString().substr(2) % sites.length];
+  const req = http.request({
+    hostname: site.split(':')[0],
+    port: +site.split(':')[1],
+    path: '/',
+    method: 'GET',
+    timeout: 2000,
+  }, res => {
+    if(res.statusCode === 200) {
+      isGfw = false;
+    }
+    res.setEncoding('utf8');
+    res.on('data', (chunk) => {});
+    res.on('end', () => {});
+  });
+  req.on('timeout', () => {
+    req.abort();
+    isGfw = true;
+  });
+  req.on('error', (e) => {
+    isGfw = true;
+  });
+  req.end();
+};
+
+setInterval(() => {
+  getGfwStatus();
+}, 300 * 1000);
+
 const getVersion = () => {
-  return Promise.resolve({ version: version + 'T' });
+  return Promise.resolve({
+    version: version + 'T',
+    isGfw,
+  });
 };
 
 const getIp = port => {
