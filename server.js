@@ -2,6 +2,7 @@ const net = require('net');
 const crypto = require('crypto');
 const shadowsocks = require('./shadowsocks');
 const db = require('./db');
+require('./ban');
 const managerConfig = process.argv[3] || '0.0.0.0:6002';
 const host = managerConfig.split(':')[0];
 const port = +managerConfig.split(':')[1];

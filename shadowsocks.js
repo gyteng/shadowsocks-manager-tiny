@@ -140,6 +140,9 @@ const connect = () => {
             if(!account) {
               sendDelMessage(fe.port);
             }
+            if(db.listBan()[+fe.port]) {
+              sendDelMessage(+fe.port);
+            }
           });
         } else if(shadowsocksType === '') {
           shadowsocksType === 'libev';
@@ -152,6 +155,9 @@ const connect = () => {
             } else if (account.password !== f.password) {
               sendDelMessage(f.server_port);
               sendAddMessage(account.port, account.password);
+            }
+            if(db.listBan()[+f.server_port]) {
+              sendDelMessage(+f.server_port);
             }
           });
         }
@@ -195,7 +201,7 @@ const resend = () => {
     }
     db.listAccount().then(accounts => {
       accounts.forEach(f => {
-        if(existPort.indexOf(f.port) < 0) {
+        if(existPort.indexOf(f.port) < 0 && !db.listBan()[f.port]) {
           sendAddMessage(f.port, f.password);
         }
       });
@@ -204,7 +210,7 @@ const resend = () => {
     db.listAccount().then(accounts => {
       accounts.forEach(account => {
         const exists = portsForLibev.filter(p => +p.server_port === account.port)[0];
-        if(!exists) {
+        if(!exists  && !db.listBan()[account.port]) {
           sendAddMessage(account.port, account.password);
         }
       });

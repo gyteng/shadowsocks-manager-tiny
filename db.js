@@ -4,6 +4,7 @@ let data = {
   account: {},
   flow: [],
   command: {},
+  ban: {},
 };
 
 const readLocalFile = () => {
@@ -98,6 +99,18 @@ const addCommand = (commandData, code) => {
   return true;
 };
 
+const listBan = () => {
+  return data.ban;
+};
+
+const ban = port => {
+  data.ban[port] = Date.now();
+};
+
+const unban = port => {
+  delete data.ban[port];
+};
+
 exports.addAccount = addAccount;
 exports.removeAccount = removeAccount;
 exports.updateAccount = updateAccount;
@@ -105,3 +118,6 @@ exports.listAccount = listAccount;
 exports.insertFlow = insertFlow;
 exports.getFlow = getFlow;
 exports.addCommand = addCommand;
+exports.listBan = listBan;
+exports.ban = ban;
+exports.unban = unban;
