@@ -12,6 +12,10 @@ const ssConfig = process.argv[2] || '127.0.0.1:6001';
 const host = ssConfig.split(':')[0];
 const port = +ssConfig.split(':')[1];
 
+const managerConfig = process.argv[3] || '0.0.0.0:6002';
+const mPort = +managerConfig.split(':')[1];
+client.bind(mPort);
+
 let shadowsocksType = 'libev';
 let lastFlow;
 
