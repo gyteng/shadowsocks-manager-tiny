@@ -216,11 +216,46 @@ const resend = () => {
   }
 };
 
+let isGfw = 0;
+let getGfwStatusTime = null;
+const getGfwStatus = () => {
+  if(getGfwStatusTime && isGfw === 0 && Date.now() - getGfwStatusTime < 600 * 1000) { return; }
+  getGfwStatusTime = Date.now();
+  const sites = [
+    'baidu.com:80',
+  ];
+  const site = sites[0];
+  // const site = sites[+Math.random().toString().substr(2) % sites.length];
+  const req = http.request({
+    hostname: site.split(':')[0],
+    port: +site.split(':')[1],
+    path: '/',
+    method: 'GET',
+    timeout: 2000,
+  }, res => {
+    if(res.statusCode === 200) {
+      isGfw = 0;
+    }
+    res.setEncoding('utf8');
+    res.on('data', (chunk) => {});
+    res.on('end', () => {});
+  });
+  req.on('timeout', () => {
+    req.abort();
+    isGfw += 1;
+  });
+  req.on('error', (e) => {
+    isGfw += 1;
+  });
+  req.end();
+};
+
 connect();
 startUp();
 setInterval(() => {
   sendPing();
   resend();
+  getGfwStatus();
 }, 60 * 1000);
 
 const addAccount = (port, password) => {
@@ -259,43 +294,6 @@ const getFlow = (options) => {
   return db.getFlow(options);
 };
 
-let isGfw = 0;
-let getGfwStatusTime = null;
-const getGfwStatus = () => {
-  if(getGfwStatusTime && isGfw === 0 && Date.now() - getGfwStatusTime < 600 * 1000) { return; }
-  getGfwStatusTime = Date.now();
-  const sites = [
-    'baidu.com:80',
-  ];
-  const site = sites[+Math.random().toString().substr(2) % sites.length];
-  const req = http.request({
-    hostname: site.split(':')[0],
-    port: +site.split(':')[1],
-    path: '/',
-    method: 'GET',
-    timeout: 2000,
-  }, res => {
-    if(res.statusCode === 200) {
-      isGfw = 0;
-    }
-    res.setEncoding('utf8');
-    res.on('data', (chunk) => {});
-    res.on('end', () => {});
-  });
-  req.on('timeout', () => {
-    req.abort();
-    isGfw += 1;
-  });
-  req.on('error', (e) => {
-    isGfw += 1;
-  });
-  req.end();
-};
-
-setInterval(() => {
-  getGfwStatus();
-}, 60 * 1000);
-
 const getVersion = () => {
   return Promise.resolve({
     version: version + 'T',
@@ -304,7 +302,7 @@ const getVersion = () => {
 };
 
 const getIp = port => {
-  const cmd = `netstat -ntu | grep ":${ port } " | grep ESTABLISHED | awk '{print $5}' | cut -d: -f1 | grep -v 127.0.0.1 | uniq -d`;
+  const cmd = `ss -an | grep ":${ port } " | grep ESTAB | awk '{print $6}' | cut -d: -f1 | grep -v 127.0.0.1 | uniq -d`;
   return new Promise((resolve, reject) => {
     exec(cmd, function(err, stdout, stderr){
       if(err) {
