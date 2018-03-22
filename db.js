@@ -47,6 +47,10 @@ const listAccount = () => {
   }));
 };
 
+const listAccountObj = () => {
+  return Promise.resolve(data.account);
+};
+
 const insertFlow = flow => {
   flow.forEach(f => {
     data.flow.push({
@@ -102,6 +106,7 @@ exports.addAccount = addAccount;
 exports.removeAccount = removeAccount;
 exports.updateAccount = updateAccount;
 exports.listAccount = listAccount;
+exports.listAccountObj = listAccountObj;
 exports.insertFlow = insertFlow;
 exports.getFlow = getFlow;
 exports.addCommand = addCommand;

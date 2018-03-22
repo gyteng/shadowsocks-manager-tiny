@@ -43,7 +43,8 @@ setInterval(() => {
     if(!addMessageCache.length && !libevListed) { continue; }
     const message = addMessageCache.shift();
     if(!message) { continue; }
-    const exists = portsForLibev.filter(p => +p.server_port === message.port)[0];
+    // const exists = portsForLibev.filter(p => +p.server_port === message.port)[0];
+    const exists = !!portsForLibevObj[message.port];
     if(exists) { continue; }
     console.log(`增加ss端口: ${ message.port } ${ message.password }`);
     client.send(`add: {"server_port": ${ message.port }, "password": "${ message.password }"}`, port, host);
@@ -98,6 +99,7 @@ const compareWithLastFlow = (flow, lastFlow) => {
 let firstFlow = true;
 let libevListed = false;
 let portsForLibev = [];
+let portsForLibevObj = {};
 const connect = () => {
   client.on('message', (msg, rinfo) => {
     const msgStr = new String(msg);
@@ -106,21 +108,27 @@ const connect = () => {
       shadowsocksType = 'python';
     } else if(msgStr.substr(0, 3) === '[\n\t') {
       portsForLibev = JSON.parse(msgStr);
+      portsForLibevObj = {};
+      portsForLibev.forEach(f => {
+        portsForLibevObj[f.server_port] = f.password;
+      });
       libevListed = true;
     } else if(msgStr.substr(0, 5) === 'stat:') {
       let flow = JSON.parse(msgStr.substr(5));
       setExistPort(flow);
       const realFlow = compareWithLastFlow(flow, lastFlow);
 
-      for(const rf in realFlow) {
-        if(realFlow[rf]) {
-          (function(port) {
-            getIp(+port).then(ips => {
-              ips.forEach(ip => {
-                clientIp.push({ port: +port, time: Date.now(), ip });
+      if((new Date()).getMinutes() % 3 === 0) {
+        for(const rf in realFlow) {
+          if(realFlow[rf]) {
+            (function(port) {
+              getIp(+port).then(ips => {
+                ips.forEach(ip => {
+                  clientIp.push({ port: +port, time: Date.now(), ip });
+                });
               });
-            });
-          })(rf);
+            })(rf);
+          }
         }
       }
 
@@ -134,30 +142,30 @@ const connect = () => {
       }).filter(f => {
         return f.flow > 0;
       });
-      db.listAccount().then(accounts => {
+      db.listAccountObj().then(accounts => {
         if(shadowsocksType === 'python') {
           // python
           insertFlow.forEach(fe => {
-            const account = accounts.filter(f => {
-              return fe.port === f.port;
-            })[0];
-            if(!account) {
+            // const account = accounts.filter(f => {
+            //   return fe.port === f.port;
+            // })[0];
+            if(!accounts[fe.port]) {
               sendDelMessage(fe.port);
             }
           });
-        } else if(shadowsocksType === '') {
-          shadowsocksType === 'libev';
         } else if(shadowsocksType === 'libev' && libevListed) {
           // libev
           portsForLibev.forEach(f => {
-            const account = accounts.filter(a => a.port === +f.server_port)[0];
+            // const account = accounts.filter(a => a.port === +f.server_port)[0];
+            const account = accounts[f.server_port];
             if(!account) {
               sendDelMessage(f.server_port);
-            } else if (account.password !== f.password) {
+            } else if (account !== f.password) {
               sendDelMessage(f.server_port);
-              sendAddMessage(account.port, account.password);
+              sendAddMessage(f.server_port, account);
             }
           });
+
         }
         if(insertFlow.length > 0) {
           if(firstFlow) {
@@ -185,11 +193,11 @@ const connect = () => {
 
 const startUp = () => {
   client.send(Buffer.from('ping'), port, host);
-  db.listAccount().then(accounts => {
-    accounts.forEach(f => {
-      sendAddMessage(f.port, f.password);
-    });
-  });
+  // db.listAccount().then(accounts => {
+  //   accounts.forEach(f => {
+  //     sendAddMessage(f.port, f.password);
+  //   });
+  // });
 };
 
 const resend = () => {
@@ -207,7 +215,8 @@ const resend = () => {
   } else if (shadowsocksType === 'libev') {
     db.listAccount().then(accounts => {
       accounts.forEach(account => {
-        const exists = portsForLibev.filter(p => +p.server_port === account.port)[0];
+        // const exists = portsForLibev.filter(p => +p.server_port === account.port)[0];
+        const exists = portsForLibevObj[account.port];
         if(!exists) {
           sendAddMessage(account.port, account.password);
         }
