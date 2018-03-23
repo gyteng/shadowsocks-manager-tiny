@@ -121,16 +121,26 @@ const connect = () => {
       setExistPort(flow);
       const realFlow = compareWithLastFlow(flow, lastFlow);
 
+      const getConnectedIp = port => {
+        setTimeout(() => {
+          getIp(+port).then(ips => {
+            ips.forEach(ip => {
+              clientIp.push({ port: +port, time: Date.now(), ip });
+            });
+          });
+        }, Math.ceil(Math.random() * 3 * 60 * 1000));
+      };
       if((new Date()).getMinutes() % 3 === 0) {
         for(const rf in realFlow) {
           if(realFlow[rf]) {
-            (function(port) {
-              getIp(+port).then(ips => {
-                ips.forEach(ip => {
-                  clientIp.push({ port: +port, time: Date.now(), ip });
-                });
-              });
-            })(rf);
+            // (function(port) {
+            //   getIp(+port).then(ips => {
+            //     ips.forEach(ip => {
+            //       clientIp.push({ port: +port, time: Date.now(), ip });
+            //     });
+            //   });
+            // })(rf);
+            getConnectedIp(rf);
           }
         }
       }
@@ -314,20 +324,20 @@ const getVersion = () => {
 };
 
 const getIp = port => {
-  const cmd = `ss -an | grep ":${ port } " | grep ESTAB | awk '{print $6}' | cut -d: -f1 | grep -v 127.0.0.1 | uniq -d`;
-  return new Promise((resolve, reject) => {
-    exec(cmd, function(err, stdout, stderr){
-      if(err) {
-        reject(stderr);
-      } else {
-        const result = [];
-        stdout.split('\n').filter(f => f).forEach(f => {
-          if(result.indexOf(f) < 0) { result.push(f); }
-        });
-        resolve(result);
-      }
-    });
-  });
+  // const cmd = `ss -an | grep ":${ port } " | grep ESTAB | awk '{print $6}' | cut -d: -f1 | grep -v 127.0.0.1 | uniq -d`;
+  // return new Promise((resolve, reject) => {
+  //   exec(cmd, function(err, stdout, stderr){
+  //     if(err) {
+  //       reject(stderr);
+  //     } else {
+  //       const result = [];
+  //       stdout.split('\n').filter(f => f).forEach(f => {
+  //         if(result.indexOf(f) < 0) { result.push(f); }
+  //       });
+  //       resolve(result);
+  //     }
+  //   });
+  // });
 };
 
 const getClientIp = port => {
