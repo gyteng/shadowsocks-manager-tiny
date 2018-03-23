@@ -112,7 +112,10 @@ const connect = () => {
       portsForLibev.forEach(f => {
         portsForLibevObj[f.server_port] = f.password;
       });
-      libevListed = true;
+      if(!libevListed) {
+        resend();
+        libevListed = true;
+      }
     } else if(msgStr.substr(0, 5) === 'stat:') {
       let flow = JSON.parse(msgStr.substr(5));
       setExistPort(flow);
