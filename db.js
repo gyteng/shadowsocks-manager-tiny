@@ -18,7 +18,7 @@ const readLocalFile = () => {
 readLocalFile();
 
 const writeFile = () => {
-  fs.writeFile('./data.json', JSON.stringify(data.account));
+  fs.writeFileSync('./data.json', JSON.stringify(data.account));
 };
 
 const addAccount = (port, password) => {

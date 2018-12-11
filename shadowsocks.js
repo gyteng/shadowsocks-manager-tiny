@@ -17,33 +17,26 @@ const mPort = +managerConfig.split(':')[1];
 client.bind(mPort);
 
 let shadowsocksType = 'libev';
+let isNewPython = false;
 let lastFlow;
 
 const sendPing = () => {
   client.send(Buffer.from('ping'), port, host);
-  if(shadowsocksType === 'libev') {
-    client.send(Buffer.from('list'), port, host);
-  }
+  client.send(Buffer.from('list'), port, host);
 };
 
 const addMessageCache = [];
 
 const sendAddMessage = (messagePort, messagePassword) => {
-  // console.log(`增加ss端口: ${ messagePort } ${ messagePassword }`);
-  // client.send(`add: {"server_port": ${ messagePort }, "password": "${ messagePassword }"}`, port, host);
-  // rop.run(messagePort, messagePassword);
-  // return Promise.resolve('ok');
   addMessageCache.push({ port: messagePort, password: messagePassword});
   return Promise.resolve('ok');
 };
 
 setInterval(() => {
-  // console.log('length: ' + addMessageCache.length);
   for(let i = 0; i < 10; i++) {
     if(!addMessageCache.length && !libevListed) { continue; }
     const message = addMessageCache.shift();
     if(!message) { continue; }
-    // const exists = portsForLibev.filter(p => +p.server_port === message.port)[0];
     const exists = !!portsForLibevObj[message.port];
     if(exists) { continue; }
     console.log(`增加ss端口: ${ message.port } ${ message.password }`);
@@ -63,8 +56,12 @@ let existPort = [];
 let existPortUpdatedAt = Date.now();
 const setExistPort = flow => {
   existPort = [];
-  for(const f in flow) {
-    existPort.push(+f);
+  if(Array.isArray(flow)) {
+    existPort = flow.map(f => +f.server_port);
+  } else {
+    for(const f in flow) {
+      existPort.push(+f);
+    }
   }
   existPortUpdatedAt = Date.now();
 };
@@ -101,11 +98,21 @@ let libevListed = false;
 let portsForLibev = [];
 let portsForLibevObj = {};
 const connect = () => {
-  client.on('message', (msg, rinfo) => {
+  client.on('message', async msg => {
     const msgStr = new String(msg);
-    // console.log(msgStr);
     if(msgStr.substr(0, 4) === 'pong') {
       shadowsocksType = 'python';
+    } else if(msgStr.substr(0, 2) === '[{') {
+      isNewPython = true;
+      portsForLibev = JSON.parse(msgStr);
+      portsForLibevObj = {};
+      portsForLibev.forEach(f => {
+        portsForLibevObj[f.server_port] = f.password;
+      });
+      if(!libevListed) {
+        resend();
+        libevListed = true;
+      }
     } else if(msgStr.substr(0, 3) === '[\n\t') {
       portsForLibev = JSON.parse(msgStr);
       portsForLibevObj = {};
@@ -133,13 +140,6 @@ const connect = () => {
       if((new Date()).getMinutes() % 3 === 0) {
         for(const rf in realFlow) {
           if(realFlow[rf]) {
-            // (function(port) {
-            //   getIp(+port).then(ips => {
-            //     ips.forEach(ip => {
-            //       clientIp.push({ port: +port, time: Date.now(), ip });
-            //     });
-            //   });
-            // })(rf);
             getConnectedIp(rf);
           }
         }
@@ -155,44 +155,40 @@ const connect = () => {
       }).filter(f => {
         return f.flow > 0;
       });
-      db.listAccountObj().then(accounts => {
-        if(shadowsocksType === 'python') {
-          // python
-          insertFlow.forEach(fe => {
-            // const account = accounts.filter(f => {
-            //   return fe.port === f.port;
-            // })[0];
-            if(!accounts[fe.port]) {
-              sendDelMessage(fe.port);
-            }
-          });
-        } else if(shadowsocksType === 'libev' && libevListed) {
-          // libev
-          portsForLibev.forEach(f => {
-            // const account = accounts.filter(a => a.port === +f.server_port)[0];
-            const account = accounts[f.server_port];
-            if(!account) {
-              sendDelMessage(f.server_port);
-            } else if (account !== f.password) {
-              sendDelMessage(f.server_port);
-              sendAddMessage(f.server_port, account);
-            }
-          });
 
-        }
-        if(insertFlow.length > 0) {
-          if(firstFlow) {
-            firstFlow = false;
-          } else {
-            const insertPromises = [];
-            for(let i = 0; i < Math.ceil(insertFlow.length/50); i++) {
-              const insert = db.insertFlow(insertFlow.slice(i * 50, i * 50 + 50));
-              insertPromises.push(insert);
-            }
-            Promise.all(insertPromises).then();
+      const accounts = await db.listAccount();
+      if(shadowsocksType === 'python' && !isNewPython) {
+        insertFlow.forEach(fe => {
+          const account = accounts.filter(f => {
+            return fe.port === f.port;
+          })[0];
+          if(!account) {
+            sendDelMessage(fe.port);
           }
+        });
+      } else {
+        portsForLibev.forEach(async f => {
+          const account = accounts.filter(a => a.port === +f.server_port)[0];
+          if(!account) {
+            sendDelMessage(+f.server_port);
+          } else if (account.password !== f.password) {
+            sendDelMessage(f.server_port);
+            sendAddMessage(f.server_port, account);
+          }
+        });
+      }
+      if(insertFlow.length > 0) {
+        if(firstFlow) {
+          firstFlow = false;
+        } else {
+          const insertPromises = [];
+          for(let i = 0; i < Math.ceil(insertFlow.length/50); i++) {
+            const insert = db.insertFlow(insertFlow.slice(i * 50, i * 50 + 50));
+            insertPromises.push(insert);
+          }
+          Promise.all(insertPromises).then();
         }
-      });
+      }
     };
   });
 
@@ -204,37 +200,23 @@ const connect = () => {
   });
 };
 
-const startUp = () => {
+const startUp = async () => {
   client.send(Buffer.from('ping'), port, host);
-  // db.listAccount().then(accounts => {
-  //   accounts.forEach(f => {
-  //     sendAddMessage(f.port, f.password);
-  //   });
-  // });
+  const accounts = await db.listAccount();
+  for(const account of accounts) {
+    sendAddMessage(account.port, account.password);
+  }
 };
 
-const resend = () => {
-  if(shadowsocksType === 'python') {
-    if(Date.now() - existPortUpdatedAt >= 180 * 1000) {
-      existPort = [];
+const resend = async () => {
+  if(Date.now() - existPortUpdatedAt >= 180 * 1000) {
+    existPort = [];
+  }
+  const accounts = await db.listAccount();
+  for(const account of accounts) {
+    if(!existPort.includes(account.port)) {
+      sendAddMessage(account.port, account.password);
     }
-    db.listAccount().then(accounts => {
-      accounts.forEach(f => {
-        if(existPort.indexOf(f.port) < 0) {
-          sendAddMessage(f.port, f.password);
-        }
-      });
-    });
-  } else if (shadowsocksType === 'libev') {
-    db.listAccount().then(accounts => {
-      accounts.forEach(account => {
-        // const exists = portsForLibev.filter(p => +p.server_port === account.port)[0];
-        const exists = portsForLibevObj[account.port];
-        if(!exists) {
-          sendAddMessage(account.port, account.password);
-        }
-      });
-    });
   }
 };
 
