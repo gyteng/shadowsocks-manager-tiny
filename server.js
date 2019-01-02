@@ -2,10 +2,19 @@ const net = require('net');
 const crypto = require('crypto');
 const shadowsocks = require('./shadowsocks');
 const db = require('./db');
-const managerConfig = process.argv[3] || '0.0.0.0:6002';
+let managerConfig = process.argv[3] || '0.0.0.0:6002';
+let password = '123456';
+const argv = process.argv.filter((ele, index) => index > 1);
+argv.forEach((f, index) => {
+  if(f === '--manager' || f === '-m') {
+    managerConfig = argv[index + 1];
+  }
+  if(f === '--password' || f === '-p') {
+    password = argv[index + 1];
+  }
+});
 const host = managerConfig.split(':')[0];
 const port = +managerConfig.split(':')[1];
-const password = process.argv[4] || '123456';
 
 const dateString = () => {
   const appendZero = (value, length) => {
