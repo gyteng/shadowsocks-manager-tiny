@@ -7,7 +7,7 @@ const argv = process.argv.filter((ele, index) => index > 1);
 argv.forEach((f, index) => {
   if(f === '--run' || f === '-r') {
     run = true;
-    if(argv[index + 1] && !argv[index + 1].includes('-')) { runParams = argv[index + 1]; }
+    if(argv[index + 1] && !argv[index + 1].startsWith('-')) { runParams = argv[index + 1]; }
   }
   if(f === '--shadowsocks' || f === '-s') {
     ssConfig = argv[index + 1];
