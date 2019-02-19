@@ -1,5 +1,13 @@
 const fs = require('fs');
 
+let dataFilePath = './data.json';
+const argv = process.argv.filter((ele, index) => index > 1);
+argv.forEach((f, index) => {
+  if(f === '--db' || f === '-d') {
+    dataFilePath = argv[index + 1];
+  }
+});
+
 let data = {
   account: {},
   flow: [],
@@ -8,17 +16,17 @@ let data = {
 
 const readLocalFile = () => {
   try {
-    fs.statSync('./data.json');
-    data.account = JSON.parse(fs.readFileSync('./data.json', 'utf8'));
+    fs.statSync(dataFilePath);
+    data.account = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
   } catch(err) {
-    fs.openSync('./data.json', 'w');
+    fs.openSync(dataFilePath, 'w');
   }
 };
 
 readLocalFile();
 
 const writeFile = () => {
-  fs.writeFileSync('./data.json', JSON.stringify(data.account));
+  fs.writeFileSync(dataFilePath, JSON.stringify(data.account));
 };
 
 const addAccount = (port, password) => {

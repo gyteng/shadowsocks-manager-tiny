@@ -1,8 +1,19 @@
 const spawn = require('child_process').spawn;
-if(!process.argv[5]) {
-  return;
-}
-let runParams = process.argv[5];
+
+let run = false;
+let runParams = 'libev:aes-256-cfb';
+let ssConfig = '127.0.0.1:6001';
+const argv = process.argv.filter((ele, index) => index > 1);
+argv.forEach((f, index) => {
+  if(f === '--run' || f === '-r') {
+    run = true;
+    if(argv[index + 1] && !argv[index + 1].startsWith('-')) { runParams = argv[index + 1]; }
+  }
+  if(f === '--shadowsocks' || f === '-s') {
+    ssConfig = argv[index + 1];
+  }
+});
+if(!run) { return; }
 let type = 'libev';
 let method = 'aes-256-cfb';
 if(runParams.indexOf(':') >= 0) {
@@ -12,9 +23,9 @@ let shadowsocks;
 if(runParams.indexOf('python') >= 0) {
   type = 'python';
   const tempPassword = 'qwerASDF' + Math.random().toString().substr(2, 8);
-  shadowsocks = spawn('ssserver', ['-m', method, '-p', '65535', '-k', tempPassword, '--manager-address', process.argv[2] ]);
+  shadowsocks = spawn('ssserver', ['-m', method, '-p', '65535', '-k', tempPassword, '--manager-address', ssConfig ]);
 } else {
-  shadowsocks = spawn('ss-manager', [ '-m', method, '-u', '--manager-address', process.argv[2] ]);
+  shadowsocks = spawn('ss-manager', [ '-m', method, '-u', '--manager-address', ssConfig ]);
 }
 
 shadowsocks.stdout.on('data', (data) => {

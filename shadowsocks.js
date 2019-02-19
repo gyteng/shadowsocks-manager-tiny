@@ -8,12 +8,21 @@ const http = require('http');
 
 let clientIp = [];
 
-const ssConfig = process.argv[2] || '127.0.0.1:6001';
+let ssConfig = '127.0.0.1:6001';
+let managerConfig = '0.0.0.0:6002';
+const argv = process.argv.filter((ele, index) => index > 1);
+argv.forEach((f, index) => {
+  if(f === '--manager' || f === '-m') {
+    managerConfig = argv[index + 1];
+  }
+  if(f === '--shadowsocks' || f === '-s') {
+    ssConfig = argv[index + 1];
+  }
+});
+const mPort = +managerConfig.split(':')[1];
 const host = ssConfig.split(':')[0];
 const port = +ssConfig.split(':')[1];
 
-const managerConfig = process.argv[3] || '0.0.0.0:6002';
-const mPort = +managerConfig.split(':')[1];
 client.bind(mPort);
 
 let shadowsocksType = 'libev';
@@ -32,8 +41,12 @@ const sendAddMessage = (messagePort, messagePassword) => {
   return Promise.resolve('ok');
 };
 
-setInterval(() => {
-  for(let i = 0; i < 10; i++) {
+setInterval(async () => {
+  let number = 10;
+  if(addMessageCache.length >= 600) {
+    number = Math.ceil(addMessageCache.length / 60);
+  }
+  for(let i = 0; i < number; i++) {
     if(!addMessageCache.length && !libevListed) { continue; }
     const message = addMessageCache.shift();
     if(!message) { continue; }
